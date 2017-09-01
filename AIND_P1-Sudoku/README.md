@@ -3,11 +3,12 @@
 
 # Question 1 (Naked Twins)
 Q: How do we use constraint propagation to solve the naked twins problem?  
-A: *Student should provide answer here*
+A: We know that if two boxes on the same unit are twins, then any other boxes on the same unit can't have any of these values.
+This is implemented in `solution.naked_twins`
 
 # Question 2 (Diagonal Sudoku)
 Q: How do we use constraint propagation to solve the diagonal sudoku problem?  
-A: *Student should provide answer here*
+A: We just need to define additional units (the two diagonal units). This is defined in `solution.DIG_UNITs`
 
 ### Install
 
