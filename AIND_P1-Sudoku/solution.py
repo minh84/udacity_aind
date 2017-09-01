@@ -114,7 +114,6 @@ def display(values):
 def eliminate(values):
     """
         Go through all the boxes, and whenever there is a box with a value, eliminate this value from the values of all its peers.
-        NOTE THAT this function changes its input dictionary
         Input: A sudoku in dictionary form.
         Output: The resulting sudoku in dictionary form.
     """
@@ -150,7 +149,6 @@ def reduce_puzzle(values):
         Input: A sudoku in dictionary form.
         Output: The resulting sudoku in dictionary form.
     """
-    solved_values = [box for box in values.keys() if len(values[box]) == 1]
     stalled = False
     while not stalled:
         solved_values_before = len([box for box in values.keys() if len(values[box]) == 1])
