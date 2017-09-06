@@ -213,8 +213,68 @@ class MinimaxPlayer(IsolationPlayer):
             raise SearchTimeout()
 
         # TODO: finish this function!
-        raise NotImplementedError
 
+        # return (-1, 1) if no more legal moves
+        legal_moves = game.get_legal_moves()
+        if not legal_moves:
+            return (-1, -1)
+
+        # minimax decision
+        best_v = float('-inf')
+        best_m = None
+        for m in legal_moves:
+            v = self.minval(game.forecast_move(m), depth, 1)
+            if v > best_v:
+                best_m = m
+                best_v = v
+        return best_m
+
+    def minval(self, game, depth, search_depth):
+        """
+        Implement the MIN-VALUE from https://github.com/aimacode/aima-pseudocode/blob/master/md/Minimax-Decision.md
+        We modified so that we
+        :param game:
+        :param depth:
+        :param search_depth:
+        :return:
+        """
+        # check for time
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+        # evaluate utility
+        player = game.get_opponent(self)    # opponent try to minimize outcome
+
+        # if search_depth >= fixed depth => return evaluation function: always score with self
+        if search_depth >= depth:
+            return self.score(game, self)
+
+        # search next layer
+        # if there is no legal moves then we win => return inf
+        min_val = float("inf")
+        for m in game.get_legal_moves(player):
+            min_val = min(min_val, self.maxval(game.forecast_move(m), depth, search_depth+1))
+
+        return min_val
+
+    def maxval(self, game, depth, search_depth):
+        # check for time
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+        # we try to maximize outcome
+        player = self
+
+        # if search_depth >= fixed depth => return evaluation function
+        if search_depth >= depth:
+            return self.score(game, self)
+
+        # search next layer
+        # if there is no legal moves then we lose => return -inf
+        max_val = float("-inf")
+        for m in game.get_legal_moves(player):
+            max_val = max(max_val, self.minval(game.forecast_move(m), depth, search_depth + 1))
+        return max_val
 
 class AlphaBetaPlayer(IsolationPlayer):
     """Game-playing agent that chooses a move using iterative deepening minimax
