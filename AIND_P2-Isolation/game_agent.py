@@ -118,6 +118,10 @@ class IsolationPlayer:
         self.time_left = None
         self.TIMER_THRESHOLD = timeout
 
+    def check_time(self):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
 
 class MinimaxPlayer(IsolationPlayer):
     """Game-playing agent that chooses a move using depth-limited minimax
@@ -209,72 +213,75 @@ class MinimaxPlayer(IsolationPlayer):
                 each helper function or else your agent will timeout during
                 testing.
         """
-        if self.time_left() < self.TIMER_THRESHOLD:
-            raise SearchTimeout()
+
 
         # TODO: finish this function!
+        _, best_move = self.maxval(game, depth)
+        return best_move
 
-        # return (-1, 1) if no more legal moves
-        legal_moves = game.get_legal_moves()
-        if not legal_moves:
-            return (-1, -1)
-
-        # minimax decision
-        best_v = float('-inf')
-        best_m = None
-        for m in legal_moves:
-            v = self.minval(game.forecast_move(m), depth, 1)
-            if v > best_v:
-                best_m = m
-                best_v = v
-        return best_m
-
-    def minval(self, game, depth, search_depth):
+    def maxval(self, game, depth):
         """
-        Implement the MIN-VALUE from https://github.com/aimacode/aima-pseudocode/blob/master/md/Minimax-Decision.md
-        We modified so that we
-        :param game:
-        :param depth:
-        :param search_depth:
+        Implement the MAX-VALUE from https://github.com/aimacode/aima-pseudocode/blob/master/md/Minimax-Decision.md
+        We modified so that we return heuristic evaluation if current search_depth reached fix-depth
+        :param game:          current game board (state)
+        :param depth:         depth to search (0 means stop)
         :return:
+            a float (best score for all actions)
+            a best move
+
+        Note that function might throw error if time runs out
         """
         # check for time
-        if self.time_left() < self.TIMER_THRESHOLD:
-            raise SearchTimeout()
+        self.check_time()
+
+        #player (self) try to maximize outcome
+        player = self
+
+        # if search_depth >= fixed depth => return evaluation function
+        if depth == 0:
+            return self.score(game, self), (-1, -1)
+
+        # search next layer
+        # if there is no legal moves then we lose => return -inf
+        max_val  = float("-inf")
+        max_move = (-1, -1)
+        for m in game.get_legal_moves(player):
+            v = self.minval(game.forecast_move(m), depth - 1)
+            if v > max_val:
+                max_val = v
+                max_move = m
+
+        return max_val, max_move
+
+    def minval(self, game, depth):
+        """
+        Implement the MIN-VALUE from https://github.com/aimacode/aima-pseudocode/blob/master/md/Minimax-Decision.md
+        We modified so that we return heuristic evaluation if current search_depth reached fix-depth
+        :param game:          current game board (state)
+        :param depth:         depth avail to search (0 means stop)
+        :return:
+            a float (worst score for all actions)
+            a worst move
+        """
+        # check for time
+        self.check_time()
 
         # evaluate utility
         player = game.get_opponent(self)    # opponent try to minimize outcome
 
         # if search_depth >= fixed depth => return evaluation function: always score with self
-        if search_depth >= depth:
+        if depth == 0:
             return self.score(game, self)
 
         # search next layer
         # if there is no legal moves then we win => return inf
         min_val = float("inf")
         for m in game.get_legal_moves(player):
-            min_val = min(min_val, self.maxval(game.forecast_move(m), depth, search_depth+1))
+            v, _ = self.maxval(game.forecast_move(m), depth - 1)
+            if v < min_val:
+                min_val = v
 
         return min_val
-
-    def maxval(self, game, depth, search_depth):
-        # check for time
-        if self.time_left() < self.TIMER_THRESHOLD:
-            raise SearchTimeout()
-
-        # we try to maximize outcome
-        player = self
-
-        # if search_depth >= fixed depth => return evaluation function
-        if search_depth >= depth:
-            return self.score(game, self)
-
-        # search next layer
-        # if there is no legal moves then we lose => return -inf
-        max_val = float("-inf")
-        for m in game.get_legal_moves(player):
-            max_val = max(max_val, self.minval(game.forecast_move(m), depth, search_depth + 1))
-        return max_val
 
 class AlphaBetaPlayer(IsolationPlayer):
     """Game-playing agent that chooses a move using iterative deepening minimax
@@ -315,7 +322,16 @@ class AlphaBetaPlayer(IsolationPlayer):
         self.time_left = time_left
 
         # TODO: finish this function!
-        raise NotImplementedError
+        depth = 0
+        best_move = (-1, -1)
+        while (True):
+            try:
+                depth += 1
+                best_move = self.alphabeta(game, depth)
+            except SearchTimeout:
+                break
+
+        return best_move
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf")):
         """Implement depth-limited minimax search with alpha-beta pruning as
@@ -362,8 +378,62 @@ class AlphaBetaPlayer(IsolationPlayer):
                 each helper function or else your agent will timeout during
                 testing.
         """
-        if self.time_left() < self.TIMER_THRESHOLD:
-            raise SearchTimeout()
 
         # TODO: finish this function!
-        raise NotImplementedError
+        _, best_move = self.maxval(game, depth, alpha, beta)
+
+        return best_move
+
+    def maxval(self, game, depth, alpha, beta):
+        self.check_time()
+
+        # we try to maximize outcome
+        player = self
+
+        # if search_depth >= fixed depth => return evaluation function
+        if depth == 0:
+            return self.score(game, self), (-1, -1)
+
+        # search next layer
+        # if there is no legal moves then we lose => return -inf
+        max_val = float("-inf")
+        max_move = (-1, -1)
+        for m in game.get_legal_moves(player):
+            v = self.minval(game.forecast_move(m), depth - 1, alpha, beta)
+            if v > max_val:
+                max_val = v
+                max_move = m
+
+                if max_val >= beta:
+                    return max_val, max_move
+
+            alpha = max(alpha, max_val)
+
+        return max_val, max_move
+
+    def minval(self, game, depth, alpha, beta):
+        self.check_time()
+
+        # evaluate utility
+        player = game.get_opponent(self)  # opponent try to minimize outcome
+
+        # if search_depth >= fixed depth => return evaluation function: always score with self
+        if depth == 0:
+            return self.score(game, self)
+
+        # search next layer
+        # if there is no legal moves then we win => return inf
+        min_val = float("inf")
+        # print('\tLegal moves {}'.format(legal_moves))
+        for m in game.get_legal_moves(player):
+            v, _ = self.maxval(game.forecast_move(m), depth - 1, alpha, beta)
+            if v < min_val:
+                min_val = v
+                if min_val <= alpha:
+                    return  min_val
+
+            beta = min(beta, min_val)
+
+        # print('min val alpha-beta {}'.format(alpha_beta))
+        return min_val
+
