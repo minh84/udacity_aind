@@ -14,7 +14,8 @@ order corrects for imbalances due to both starting position and initiative.
 import itertools
 import random
 import warnings
-
+import pickle
+import sys
 from collections import namedtuple
 
 from isolation import Board
@@ -23,7 +24,7 @@ from sample_players import (RandomPlayer, open_move_score,
 from game_agent import (MinimaxPlayer, AlphaBetaPlayer, custom_score,
                         custom_score_2, custom_score_3)
 
-NUM_MATCHES = 5  # number of matches against each opponent
+NUM_MATCHES = 10  # number of matches against each opponent
 TIME_LIMIT = 150  # number of milliseconds before timeout
 
 DESCRIPTION = """
@@ -60,13 +61,22 @@ def play_round(cpu_agent, test_agents, win_counts, num_matches):
 
         # play all games and tally the results
         for game in games:
-            winner, _, termination = game.play(time_limit=TIME_LIMIT)
+            winner, hist, termination = game.play(time_limit=TIME_LIMIT)
             win_counts[winner] += 1
 
             if termination == "timeout":
                 timeout_count += 1
             elif termination == "forfeit":
                 forfeit_count += 1
+                # dbg_dict = {'hist'            : hist,
+                #             'board'           : game._board_state,
+                #             'player1'         : type(game._player_1),
+                #             'player2'         : type(game._player_2)}
+                # with open('dbg.pkl', 'wb') as f:
+                #     pickle.dump(dbg_dict, f)
+                #     print('Debug info is dumped to {}'.format('dbg.pkl'))
+                #
+                # sys.exit(0)
 
     return timeout_count, forfeit_count
 

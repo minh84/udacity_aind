@@ -47,13 +47,23 @@ def test_case2(state, alpha, beta):
     print('Next move: \n\t{}'.format(player1.alphabeta(game_copy, 2, alpha, beta)))
     print('Time left/limit ({:.2f}/{:.2f}) ms'.format(time_left(), time_limit))
 
+import pickle
+def test_case3():
+    with open('dbg.pkl', 'rb') as f:
+        dbg_dict = pickle.load(f)
+
+    # print(dbg_dict['hist'])
+    # print(dbg_dict['board'])
+    # print(dbg_dict['player1'])
+    # print(dbg_dict['player2'])
+
+    player1 = AlphaBetaPlayer(score_fn=improved_score)
+    player2 = RandomPlayer()
+
+    game = Board(player1, player2)
+    game._board_state = dbg_dict['board']
+
+    game.play_next_move()
 
 if __name__ == '__main__':
-    # state = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 34, 30]
-    #state = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, 22]
-    state = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 40, 50]
-    alpha = 5.0
-    beta  = 4.0
-
-
-    test_case2(state, alpha, beta)
+    test_case3()

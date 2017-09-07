@@ -271,6 +271,7 @@ class Board(object):
         the location of each player and indicating which cells have been
         blocked, and which remain open.
         """
+
         p1_loc = self._board_state[-1]
         p2_loc = self._board_state[-2]
 
@@ -292,7 +293,10 @@ class Board(object):
                     out += '-'
                 out += ' | '
             out += '\n\r'
-
+        if self._board_state[-3] == 0:
+            out = 'Active player 1\n' + out
+        else:
+            out = 'Active player 2\n' + out
         return out
 
     def play(self, time_limit=TIME_LIMIT_MILLIS):
@@ -340,3 +344,20 @@ class Board(object):
             move_history.append(list(curr_move))
 
             self.apply_move(curr_move)
+
+    def play_next_move(self, time_limit=TIME_LIMIT_MILLIS):
+        time_millis = lambda: 1000 * timeit.default_timer()
+
+        legal_player_moves = self.get_legal_moves()
+        game_copy = self.copy()
+
+        move_start = time_millis()
+        time_left = lambda: time_limit - (time_millis() - move_start)
+        # curr_move = self._active_player.get_move(game_copy, time_left)
+
+        self._active_player.time_left = time_left
+        curr_move = self._active_player.alphabeta(game_copy, 10)
+        forfeit = ' player forfeit!' if curr_move not in legal_player_moves else ''
+        print('Legal moves: {}'.format(legal_player_moves))
+        print('Next move:   {}{}'.format(curr_move, forfeit))
+        print('Time left:   {:.2f} ms'.format(time_left()))
