@@ -42,6 +42,22 @@ def weighted_score(game, player, weight):
     opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
     return float(own_moves - weight*opp_moves)
 
+def is_wall(game, move):
+    if move[0] == 0 or move[0] == game.width-1 \
+       or move[1] == 0 or move[1] == game.height -1:
+        return 1.
+    return 0.
+
+def wall_score(game, moves):
+    return np.sum([is_wall(game, m) for m in moves])
+
+def weighted_move_score(game, moves):
+    score = 0.
+    if len(moves):
+        # invoke __get_moves from outside: https://www.python.org/dev/peps/pep-0008/
+        score = np.mean([len(game._Board__get_moves(m)) for m in moves])
+    return score
+
 def custom_score(game, player):
     """Calculate the heuristic value of a game state from the point of view
     of the given player.
@@ -77,25 +93,27 @@ def custom_score(game, player):
     own_moves = game.get_legal_moves(player)
     opp_moves = game.get_legal_moves(game.get_opponent(player))
 
-    if (len(own_moves) == 0):
-        return float("-inf")
-
-    if (len(opp_moves) == 0):
-        return float("inf")
-
     # get percent occupied
     blank_spaces = game.get_blank_spaces()
     occupied = float(len(blank_spaces)) / (game.width * game.height)
 
     occupied = min(occupied, 0.85)
 
+    # get moves scores
+    own_next_moves = weighted_move_score(game, own_moves)
+    opp_next_moves = weighted_move_score(game, opp_moves)
 
-    # invoke __get_moves from outside: https://www.python.org/dev/peps/pep-0008/
-    own_next_moves = np.mean([len(game._Board__get_moves(m)) for m in own_moves])
-    opp_next_moves = np.mean([len(game._Board__get_moves(m)) for m in opp_moves])
+    weight = 1.5
+    score = (1.0 - occupied) * (len(own_moves) - weight*len(opp_moves)) + occupied * (own_next_moves - weight*opp_next_moves)
 
-    weight = 1.0
-    return (1.0 - occupied) * (len(own_moves) - weight*len(opp_moves)) + occupied * (own_next_moves - weight*opp_next_moves)
+    # get number of moves is on the wall
+    own_walls = wall_score(game, own_moves)
+    opp_walls = wall_score(game, opp_moves)
+    if occupied < 0.5:
+        score += (own_walls - opp_walls)
+
+    # return
+    return score
 
 
 def custom_score_2(game, player):
