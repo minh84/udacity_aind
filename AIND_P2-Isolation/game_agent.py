@@ -73,19 +73,29 @@ def custom_score(game, player):
     if game.is_winner(player):
         return float("inf")
 
+    # look ahead: either len(own_moves) > 0 or len(opp_moves) > 0 (otherwise is_loser or is_winner is already True)
+    own_moves = game.get_legal_moves(player)
+    opp_moves = game.get_legal_moves(game.get_opponent(player))
+
+    if (len(own_moves) == 0):
+        return float("-inf")
+
+    if (len(opp_moves) == 0):
+        return float("inf")
+
     # get percent occupied
     blank_spaces = game.get_blank_spaces()
     occupied = float(len(blank_spaces)) / (game.width * game.height)
 
-    # look ahead
-    own_moves = game.get_legal_moves(player)
-    opp_moves = game.get_legal_moves(game.get_opponent(player))
+    occupied = min(occupied, 0.85)
+
 
     # invoke __get_moves from outside: https://www.python.org/dev/peps/pep-0008/
     own_next_moves = np.mean([len(game._Board__get_moves(m)) for m in own_moves])
     opp_next_moves = np.mean([len(game._Board__get_moves(m)) for m in opp_moves])
 
-    return (1.0 - occupied) * (len(own_moves) - len(opp_moves)) + occupied * (own_next_moves - opp_next_moves)
+    weight = 1.0
+    return (1.0 - occupied) * (len(own_moves) - weight*len(opp_moves)) + occupied * (own_next_moves - weight*opp_next_moves)
 
 
 def custom_score_2(game, player):
