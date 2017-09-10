@@ -52,13 +52,42 @@ def wall_score(game, moves):
     return np.sum([is_wall(game, m) for m in moves])
 
 def weighted_move_score(game, moves):
+    return float(np.sum([len(game._Board__get_moves(m)) for m in moves]))
+
+def max_move_score(game, moves):
     score = 0.
     if len(moves):
-        # invoke __get_moves from outside: https://www.python.org/dev/peps/pep-0008/
-        score = np.mean([len(game._Board__get_moves(m)) for m in moves])
+        score = float(np.max([len(game._Board__get_moves(m)) for m in moves]))
     return score
 
 def custom_score(game, player):
+    """Calculate the heuristic value of a game state from the point of view
+    of the given player.
+
+    This should be the best heuristic function for your project submission.
+
+    Note: this function should be called from within a Player instance as
+    `self.score()` -- you should not need to call this function directly.
+
+    Parameters
+    ----------
+    game : `isolation.Board`
+        An instance of `isolation.Board` encoding the current state of the
+        game (e.g., player locations and blocked cells).
+
+    player : object
+        A player instance in the current game (i.e., an object corresponding to
+        one of the player objects `game.__player_1__` or `game.__player_2__`.)
+
+    Returns
+    -------
+    float
+        The heuristic value of the current game state to the specified player.
+    """
+    # TODO: finish this function!
+    return custom_score_comb(game, player, 2.0)
+
+def custom_score_comb(game, player, alpha=1.0):
     """Calculate the heuristic value of a game state from the point of view
     of the given player.
 
@@ -89,34 +118,50 @@ def custom_score(game, player):
     if game.is_winner(player):
         return float("inf")
 
+    blank_spaces = game.get_blank_spaces()
+    occupied = float(len(blank_spaces)) / (game.width * game.height)
+    occupied = min(occupied, 0.8)
+
     # look ahead: either len(own_moves) > 0 or len(opp_moves) > 0 (otherwise is_loser or is_winner is already True)
     own_moves = game.get_legal_moves(player)
     opp_moves = game.get_legal_moves(game.get_opponent(player))
 
-    # get percent occupied
-    blank_spaces = game.get_blank_spaces()
-    occupied = float(len(blank_spaces)) / (game.width * game.height)
-
-    occupied = min(occupied, 0.85)
 
     # get moves scores
     own_next_moves = weighted_move_score(game, own_moves)
     opp_next_moves = weighted_move_score(game, opp_moves)
 
-    weight = 1.5
-    score = (1.0 - occupied) * (len(own_moves) - weight*len(opp_moves)) + occupied * (own_next_moves - weight*opp_next_moves)
+    return (len(own_moves) - len(opp_moves)) + alpha * (own_next_moves - opp_next_moves)
 
-    # get number of moves is on the wall
-    own_walls = wall_score(game, own_moves)
-    opp_walls = wall_score(game, opp_moves)
-    if occupied < 0.5:
-        score += (own_walls - opp_walls)
+def custom_score_adaptive(game, player, use_occ_on_move=False):
+    if game.is_loser(player):
+        return float("-inf")
 
-    # return
+    if game.is_winner(player):
+        return float("inf")
+
+    blank_spaces = game.get_blank_spaces()
+    occupied = float(len(blank_spaces)) / (game.width * game.height)
+    occupied = min(occupied, 0.8)
+
+    # look ahead: either len(own_moves) > 0 or len(opp_moves) > 0 (otherwise is_loser or is_winner is already True)
+    own_moves = game.get_legal_moves(player)
+    opp_moves = game.get_legal_moves(game.get_opponent(player))
+
+
+    # get moves scores
+    own_next_moves = weighted_move_score(game, own_moves)
+    opp_next_moves = weighted_move_score(game, opp_moves)
+
+    weight = 1.0
+    alpha,beta  = occupied,1.0-occupied
+    if not use_occ_on_move:
+        alpha, beta = beta, alpha
+    score  = alpha* (len(own_moves) - weight*len(opp_moves)) + beta * (own_next_moves - weight*opp_next_moves)
+
     return score
 
-
-def custom_score_2(game, player):
+def custom_score_2(game, player, weight = 1.5):
     """Calculate the heuristic value of a game state from the point of view
     of the given player.
 
@@ -139,10 +184,10 @@ def custom_score_2(game, player):
         The heuristic value of the current game state to the specified player.
     """
     # TODO: finish this function!
-    return weighted_score(game, player, 1.5)
+    return weighted_score(game, player, weight)
 
 
-def custom_score_3(game, player):
+def custom_score_3(game, player, weight = 1.0):
     """Calculate the heuristic value of a game state from the point of view
     of the given player.
 
@@ -165,7 +210,21 @@ def custom_score_3(game, player):
         The heuristic value of the current game state to the specified player.
     """
     # TODO: finish this function!
-    return weighted_score(game, player, 2.0)
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    # look ahead: either len(own_moves) > 0 or len(opp_moves) > 0 (otherwise is_loser or is_winner is already True)
+    own_moves = game.get_legal_moves(player)
+    opp_moves = game.get_legal_moves(game.get_opponent(player))
+
+    # get moves scores
+    own_next_moves = weighted_move_score(game, own_moves)
+    opp_next_moves = weighted_move_score(game, opp_moves)
+
+    return own_next_moves - weight*opp_next_moves
 
 
 class IsolationPlayer:
@@ -400,12 +459,12 @@ class AlphaBetaPlayer(IsolationPlayer):
         self.time_left = time_left
 
         # TODO: finish this function!
-        depth = 0
+        depth = 1
         best_move = (-1, -1)
         while (True):
             try:
-                depth += 1
                 best_move = self.alphabeta(game, depth)
+                depth += 1
             except SearchTimeout:
                 break
 

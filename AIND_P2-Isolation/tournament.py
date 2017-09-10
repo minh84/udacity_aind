@@ -16,15 +16,16 @@ import random
 import warnings
 import pickle
 import sys
+import time
 from collections import namedtuple
 
 from isolation import Board
 from sample_players import (RandomPlayer, open_move_score,
                             improved_score, center_score)
-from game_agent import (MinimaxPlayer, AlphaBetaPlayer, custom_score,
+from game_agent import (MinimaxPlayer, AlphaBetaPlayer, custom_score_adaptive, custom_score_comb,
                         custom_score_2, custom_score_3)
 
-NUM_MATCHES = 20  # number of matches against each opponent
+NUM_MATCHES = 50  # number of matches against each opponent
 TIME_LIMIT = 150  # number of milliseconds before timeout
 
 DESCRIPTION = """
@@ -94,14 +95,14 @@ def play_matches(cpu_agents, test_agents, num_matches):
     total_forfeits = 0.
     total_matches = 2 * num_matches * len(cpu_agents)
 
-    print("\n{:^9}{:^13}".format("Match #", "Opponent") + ''.join(['{:^13}'.format(x[1].name) for x in enumerate(test_agents)]))
-    print("{:^9}{:^13} ".format("", "") +  ' '.join(['{:^5}| {:^5}'.format("Won", "Lost") for x in enumerate(test_agents)]))
+    print("\n{:^9}{:^15}".format("Match #", "Opponent") + ''.join(['{:^15}'.format(x[1].name) for x in enumerate(test_agents)]))
+    print("{:^9}{:^15} ".format("", "") +  ' '.join(['{:^6}| {:^6}'.format("Won", "Lost") for x in enumerate(test_agents)]))
 
     for idx, agent in enumerate(cpu_agents):
         wins = {key: 0 for (key, value) in test_agents}
         wins[agent.player] = 0
 
-        print("{!s:^9}{:^13}".format(idx + 1, agent.name), end="", flush=True)
+        print("{!s:^9}{:^15}".format(idx + 1, agent.name), end="", flush=True)
 
         counts = play_round(agent, test_agents, wins, num_matches)
         total_timeouts += counts[0]
@@ -111,15 +112,15 @@ def play_matches(cpu_agents, test_agents, num_matches):
         round_totals = sum([[wins[agent.player], _total - wins[agent.player]]
                             for agent in test_agents], [])
         print(' ' + ' '.join([
-            '{:^5}| {:^5}'.format(
+            '{:^6}| {:^6}'.format(
                 round_totals[i],round_totals[i+1]
             ) for i in range(0, len(round_totals), 2)
         ]))
 
     print("-" * 74)
-    print('{:^9}{:^13}'.format("", "Win Rate:") +
+    print('{:^9}{:^15}'.format("", "Win Rate:") +
         ''.join([
-            '{:^13}'.format(
+            '{:^15}'.format(
                 "{:.1f}%".format(100 * total_wins[x[1].player] / total_matches)
             ) for x in enumerate(test_agents)
     ]))
@@ -133,39 +134,77 @@ def play_matches(cpu_agents, test_agents, num_matches):
         print(("\nYour ID search forfeited {} games while there were still " +
                "legal moves available to play.\n").format(total_forfeits))
 
+def test_aggresive():
+    custom_score_2_0_5 = lambda game, player: custom_score_2(game, player, 0.5)
+    custom_score_2_1_5 = lambda game, player: custom_score_2(game, player, 1.5)
+    custom_score_2_2_0 = lambda game, player: custom_score_2(game, player, 2.0)
+
+    test_agents = [
+        Agent(AlphaBetaPlayer(score_fn=improved_score),     "AB_Improved"),
+        Agent(AlphaBetaPlayer(score_fn=custom_score_2_0_5), "AB_Aggr_0.5"),
+        Agent(AlphaBetaPlayer(score_fn=custom_score_2_1_5), "AB_Aggr_1.5"),
+        Agent(AlphaBetaPlayer(score_fn=custom_score_2_2_0), "AB_Aggr_2.0"),
+    ]
+    return test_agents
+
+def test_weighted_move():
+    custom_score_3_0_5 = lambda game, player: custom_score_3(game, player, 0.5)
+    custom_score_3_1_0 = lambda game, player: custom_score_3(game, player, 1.0)
+    custom_score_3_1_5 = lambda game, player: custom_score_3(game, player, 1.5)
+    custom_score_3_2_0 = lambda game, player: custom_score_3(game, player, 2.0)
+
+    test_agents = [
+        Agent(AlphaBetaPlayer(score_fn=improved_score), "AB_Improved")
+       ,Agent(AlphaBetaPlayer(score_fn=custom_score_3_0_5), "AB_Wm_0.5")
+       ,Agent(AlphaBetaPlayer(score_fn=custom_score_3_1_0), "AB_Wm_1.0")
+       ,Agent(AlphaBetaPlayer(score_fn=custom_score_3_1_5), "AB_Wm_1.5")
+       ,Agent(AlphaBetaPlayer(score_fn=custom_score_3_2_0), "AB_Wm_2.0")
+    ]
+
+    return test_agents
+
+def test_combined_strategy():
+    custom_score_1_0_5 = lambda game, player: custom_score_comb(game, player, 0.5)
+    custom_score_1_1_0 = lambda game, player: custom_score_comb(game, player, 1.5)
+    custom_score_1_2_0 = lambda game, player: custom_score_comb(game, player, 2.0)
+
+    test_agents = [
+          Agent(AlphaBetaPlayer(score_fn=improved_score), "AB_Improved")
+        , Agent(AlphaBetaPlayer(score_fn=custom_score_1_0_5), "AB_Comb_0.5")
+        , Agent(AlphaBetaPlayer(score_fn=custom_score_1_1_0), "AB_Comb_1.0")
+        , Agent(AlphaBetaPlayer(score_fn=custom_score_1_2_0), "AB_Comb_2.0")
+    ]
+
+    return test_agents
+
+def test_combined_adaptive():
+    custom_score_adaptive_0 = lambda game, player: custom_score_adaptive(game, player, True)
+    custom_score_adaptive_1 = lambda game, player: custom_score_adaptive(game, player, False)
+
+    test_agents = [
+          Agent(AlphaBetaPlayer(score_fn=improved_score), "AB_Improved")
+        , Agent(AlphaBetaPlayer(score_fn=custom_score_adaptive_0), "AB_Comb_Occ")
+        , Agent(AlphaBetaPlayer(score_fn=custom_score_adaptive_1), "AB_Comb_1-Occ")
+    ]
+
+    return test_agents
 
 def main():
 
     # Define two agents to compare -- these agents will play from the same
     # starting position against the same adversaries in the tournament
-    test_agents = [
-        Agent(AlphaBetaPlayer(score_fn=improved_score), "AB_Improved"),
-        Agent(AlphaBetaPlayer(score_fn=custom_score), "AB_Custom")
-    ]
-    # test_agents = [
-    #     Agent(AlphaBetaPlayer(score_fn=improved_score), "AB_Improved"),
-    #     Agent(AlphaBetaPlayer(score_fn=custom_score), "AB_Custom"),
-    #     Agent(AlphaBetaPlayer(score_fn=custom_score_2), "AB_Custom_2"),
-    #     Agent(AlphaBetaPlayer(score_fn=custom_score_3), "AB_Custom_3")
-    # ]
+    test_agents = test_combined_strategy()
 
     # Define a collection of agents to compete against the test agents
     cpu_agents = [
         Agent(RandomPlayer(), "Random"),
+        Agent(MinimaxPlayer(score_fn=open_move_score), "MM_Open"),
+        Agent(MinimaxPlayer(score_fn=center_score), "MM_Center"),
+        Agent(MinimaxPlayer(score_fn=improved_score), "MM_Improved"),
         Agent(AlphaBetaPlayer(score_fn=open_move_score), "AB_Open"),
         Agent(AlphaBetaPlayer(score_fn=center_score), "AB_Center"),
         Agent(AlphaBetaPlayer(score_fn=improved_score), "AB_Improved")
     ]
-
-    # cpu_agents = [
-    #     Agent(RandomPlayer(), "Random"),
-    #     Agent(MinimaxPlayer(score_fn=open_move_score), "MM_Open"),
-    #     Agent(MinimaxPlayer(score_fn=center_score), "MM_Center"),
-    #     Agent(MinimaxPlayer(score_fn=improved_score), "MM_Improved"),
-    #     Agent(AlphaBetaPlayer(score_fn=open_move_score), "AB_Open"),
-    #     Agent(AlphaBetaPlayer(score_fn=center_score), "AB_Center"),
-    #     Agent(AlphaBetaPlayer(score_fn=improved_score), "AB_Improved")
-    # ]
 
     print(DESCRIPTION)
     print("{:^74}".format("*************************"))
@@ -175,4 +214,7 @@ def main():
 
 
 if __name__ == "__main__":
+    ts = time.time()
     main()
+    te = time.time()
+    print('Your total run-time {:.2f}'.format(te - ts))
