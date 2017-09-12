@@ -370,6 +370,7 @@ def cornersHeuristic1(state, problem):
     min_dist += right + top + min(right,top) - 3
 
   return min_dist
+
 def cornersHeuristic(state, problem):
   """
   A heuristic for the CornersProblem that you defined.
@@ -451,6 +452,19 @@ class AStarFoodSearchAgent(SearchAgent):
     self.searchFunction = lambda prob: search.aStarSearch(prob, foodHeuristic)
     self.searchType = FoodSearchProblem
 
+def foodHeuristic1(currPos, foodPos):
+  if len(foodPos) == 0:
+    return 0
+
+  minDist = float('inf')
+  for food in foodPos:
+    dist = abs(food[0] - currPos[0]) + abs(food[1] - currPos[1])
+    if dist < minDist:
+      minDist = dist
+
+  # we need to eat len(foodPos) - 1 after the first one
+  return minDist + len(foodPos) - 1
+
 def foodHeuristic(state, problem):
   """
   Your heuristic for the FoodSearchProblem goes here.
@@ -478,8 +492,10 @@ def foodHeuristic(state, problem):
   """
   position, foodGrid = state
   "*** YOUR CODE HERE ***"
-  return 0
-  
+  foodPos = foodGrid.asList()
+  return foodHeuristic1(position, foodPos)
+
+
 class ClosestDotSearchAgent(SearchAgent):
   "Search for all food using a sequence of searches"
   def registerInitialState(self, state):
@@ -501,13 +517,13 @@ class ClosestDotSearchAgent(SearchAgent):
     "Returns a path (a list of actions) to the closest dot, starting from gameState"
     # Here are some useful elements of the startState
     startPosition = gameState.getPacmanPosition()
-    food = gameState.getFood()
-    walls = gameState.getWalls()
+    food = gameState.getFood()    # Grid object
+    # walls = gameState.getWalls()  # Walls
     problem = AnyFoodSearchProblem(gameState)
 
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
-  
+    return search.bfs(problem)
+
 class AnyFoodSearchProblem(PositionSearchProblem):
   """
     A search problem for finding a path to any food.
@@ -542,7 +558,16 @@ class AnyFoodSearchProblem(PositionSearchProblem):
     x,y = state
     
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    # util.raiseNotDefined()
+    foodPos = self.food.asList()
+    if len(foodPos) == 0:
+      return True
+
+    for food in foodPos:
+      dist = abs(food[0] - state[0]) + abs(food[1] - state[1])
+      if dist == 0:
+        return True
+    return False
 
 ##################
 # Mini-contest 1 #
