@@ -452,18 +452,33 @@ class AStarFoodSearchAgent(SearchAgent):
     self.searchFunction = lambda prob: search.aStarSearch(prob, foodHeuristic)
     self.searchType = FoodSearchProblem
 
-def foodHeuristic1(currPos, foodPos):
+def foodHeuristic1(state, problem):
+  position, foodGrid = state
+  "*** YOUR CODE HERE ***"
+  foodPos = foodGrid.asList()
   if len(foodPos) == 0:
     return 0
 
   minDist = float('inf')
   for food in foodPos:
-    dist = abs(food[0] - currPos[0]) + abs(food[1] - currPos[1])
+    dist = abs(food[0] - position[0]) + abs(food[1] - position[1])
     if dist < minDist:
       minDist = dist
 
   # we need to eat len(foodPos) - 1 after the first one
   return minDist + len(foodPos) - 1
+
+def foodHeuristic2(state, problem):
+  position, foodGrid = state
+
+  foodPos = foodGrid.asList()
+  if len(foodPos) == 0:
+    return 0
+
+  # walls = gameState.getWalls()  # Walls
+  problem = AnyFoodSearchProblem(problem.startingGameState)
+  problem.startState = position
+  return len(search.bfs(problem)) + len(foodPos) - 1
 
 def foodHeuristic(state, problem):
   """
@@ -490,10 +505,7 @@ def foodHeuristic(state, problem):
     problem.heuristicInfo['wallCount'] = problem.walls.count()
   Subsequent calls to this heuristic can access problem.heuristicInfo['wallCount']
   """
-  position, foodGrid = state
-  "*** YOUR CODE HERE ***"
-  foodPos = foodGrid.asList()
-  return foodHeuristic1(position, foodPos)
+  return foodHeuristic2(state, problem)
 
 
 class ClosestDotSearchAgent(SearchAgent):
@@ -516,9 +528,6 @@ class ClosestDotSearchAgent(SearchAgent):
   def findPathToClosestDot(self, gameState):
     "Returns a path (a list of actions) to the closest dot, starting from gameState"
     # Here are some useful elements of the startState
-    startPosition = gameState.getPacmanPosition()
-    food = gameState.getFood()    # Grid object
-    # walls = gameState.getWalls()  # Walls
     problem = AnyFoodSearchProblem(gameState)
 
     "*** YOUR CODE HERE ***"
