@@ -218,6 +218,8 @@ def aStarSearch(problem, heuristic=nullHeuristic):
 
   # set up expolored to seen state, parents to get back the path
   explored = set()
+  explored.add(start_state)
+
   parents = dict()
   parents[start_state] = None
 
@@ -226,7 +228,7 @@ def aStarSearch(problem, heuristic=nullHeuristic):
 
   while not frontier.isEmpty():
     top_cost, top_state = frontier.pop()
-    explored.add(top_state)
+
 
     # if we at goal, we go backward to the origin
     if problem.isGoalState(top_state):
@@ -239,6 +241,7 @@ def aStarSearch(problem, heuristic=nullHeuristic):
 
     for next_node, move, cost in problem.getSuccessors(top_state):
       if not next_node in explored:
+        explored.add(next_node)
         parents[next_node] = (top_state, move)
         frontier.push((top_cost + cost, next_node))
 

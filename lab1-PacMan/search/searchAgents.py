@@ -276,8 +276,12 @@ class CornersProblem(search.SearchProblem):
         print 'Warning: no food in corner ' + str(corner)
     self._expanded = 0 # Number of search nodes expanded
     "*** YOUR CODE HERE ***"
-    self._corner_map = dict(zip(self.corners, [1<<x for x in range(len(self.corners))]))
-    
+    self._corners_map = dict(zip(self.corners, [1<<x for x in range(len(self.corners))]))
+
+  @property
+  def corners_map(self):
+    return self._corners_map
+
   def getStartState(self):
     "Returns the start state (in your state space, not the full Pacman state space)"
     "*** YOUR CODE HERE ***"
@@ -319,8 +323,8 @@ class CornersProblem(search.SearchProblem):
       if not self.walls[nextx][nexty]:
         nextPos = (nextx, nexty)
         nextMasked = masked
-        if nextPos in self._corner_map:
-          nextMasked |= self._corner_map[nextPos]
+        if nextPos in self._corners_map:
+          nextMasked |= self._corners_map[nextPos]
 
         nextState = (nextPos, nextMasked)
         cost = 1
@@ -342,7 +346,30 @@ class CornersProblem(search.SearchProblem):
       if self.walls[x][y]: return 999999
     return len(actions)
 
+def cornersHeuristic1(state, problem):
+  pos, masked = state
+  if masked == 15:
+    return 0
 
+  corners     = problem.corners  # These are the corner coordinates
+  corners_map = problem.corners_map
+  un_reached  = []
+  min_dist = float('inf')
+  for corner in corners:
+    # un masked corner means not parsed yet
+    if not (masked & corners_map[corner]):
+      un_reached.append(corner)
+      dist = abs(pos[0] - corner[0]) + abs(pos[1] - corner[1])
+      if dist < min_dist:
+        min_dist = dist
+
+  if len(un_reached) == 2:
+    min_dist += abs(un_reached[0][0] - un_reached[1][0]) + abs(un_reached[0][1] - un_reached[1][1])
+  elif len(un_reached) >= 3:
+    right, top = corners[-1]
+    min_dist += right + top + min(right,top) - 3
+
+  return min_dist
 def cornersHeuristic(state, problem):
   """
   A heuristic for the CornersProblem that you defined.
@@ -356,11 +383,11 @@ def cornersHeuristic(state, problem):
   on the shortest path from the state to a goal of the problem; i.e.
   it should be admissible (as well as consistent).
   """
-  corners = problem.corners # These are the corner coordinates
-  walls = problem.walls # These are the walls of the maze, as a Grid (game.py)
-  
+  # corners = problem.corners # These are the corner coordinates
+  # walls = problem.walls # These are the walls of the maze, as a Grid (game.py)
+
   "*** YOUR CODE HERE ***"
-  return 0 # Default to trivial solution
+  return cornersHeuristic1(state, problem)
 
 class AStarCornersAgent(SearchAgent):
   "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"
