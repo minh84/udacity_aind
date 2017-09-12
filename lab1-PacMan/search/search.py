@@ -67,6 +67,58 @@ def tinyMazeSearch(problem):
   w = Directions.WEST
   return  [s,s,w,s,w,w,s,w]
 
+def generalSearch(problem, fn):
+    dataStructure = {'bfs': util.Queue(), 'dfs': util.Stack()}
+    root = problem.getStartState()
+    try:
+        visited = set()
+        fringe = dataStructure[fn]
+        fringe.push((root, [], 0))
+        while not fringe.isEmpty():
+            location, path, cost = fringe.pop()
+            if problem.isGoalState(location):
+                # print path
+                return path
+            if location not in visited:
+                visited.add(location)
+                for x, y, z in problem.getSuccessors(location):
+                    if x not in visited:
+                        fringe.push((x, path + [y], z))
+        return []
+    except Exception as e:
+        print e
+        return []
+
+def graphSearch(problem, frontier):
+  start_state = problem.getStartState()
+  explored    = set()
+  parents     = dict()
+  parents[start_state] = None
+  explored.add(start_state)
+  frontier.push(start_state)
+
+  while not frontier.isEmpty():
+    top = frontier.pop()
+
+    # if we at goal, we go backward to the origin
+    if problem.isGoalState(top):
+      actions = []
+      curr = top
+      while (parents[curr] is not None):
+        curr, move = parents[curr]
+        actions.append(move)
+      return actions[::-1]
+
+    for next_node, move,_ in problem.getSuccessors(top):
+      if not next_node in explored:
+        # push here is very important since it can change magnitude number of node to be searched
+        explored.add(next_node)
+        parents[next_node] = (top, move)
+        frontier.push(next_node)
+
+  # can't not find path to Goal
+  return None
+
 def depthFirstSearch(problem):
   """
   Search the deepest nodes in the search tree first
@@ -84,7 +136,15 @@ def depthFirstSearch(problem):
   print "Start's successors:", problem.getSuccessors(problem.getStartState())
   """
   "*** YOUR CODE HERE ***"
-  util.raiseNotDefined()
+  # util.raiseNotDefined()
+
+  # some debug to get started
+  # print('Start state {}'.format(start_state))
+  # print('Is the start a goal? {}'.format(problem.isGoalState(start_state)))
+  # print('Start\'s successors: {}'.format(problem.getSuccessors(start_state)))
+
+  # can't not find path to Goal
+  return graphSearch(problem, util.Stack())
 
 def breadthFirstSearch(problem):
   """
@@ -92,12 +152,51 @@ def breadthFirstSearch(problem):
   [2nd Edition: p 73, 3rd Edition: p 82]
   """
   "*** YOUR CODE HERE ***"
-  util.raiseNotDefined()
-      
+  return graphSearch(problem, util.Queue())
+  # return generalSearch(problem, fn='bfs')
+
 def uniformCostSearch(problem):
   "Search the node of least total cost first. "
   "*** YOUR CODE HERE ***"
-  util.raiseNotDefined()
+  # util.raiseNotDefined()
+  start_state = problem.getStartState()
+
+  priorityFn = lambda cost_node : cost_node[0]
+
+  frontier = util.PriorityQueueWithFunction(priorityFn)
+  frontier.push((0, start_state))
+
+  # set up expolored to seen state, parents to get back the path
+  explored = set()
+  explored.add(start_state)
+
+  parents = dict()
+  parents[start_state] = None
+
+  min_cost = float('inf')
+  min_path = None
+
+  while not frontier.isEmpty():
+    top_cost, top_state = frontier.pop()
+    # if we at goal, we go backward to the origin
+    if problem.isGoalState(top_state):
+      if top_cost < min_cost:
+        min_cost = top_cost
+        actions = []
+        curr = top_state
+        while (parents[curr] is not None):
+          curr, move = parents[curr]
+          actions.append(move)
+        # update min_path
+        min_path = actions[::-1]
+
+    for next_node, move, cost in problem.getSuccessors(top_state):
+      if not next_node in explored:
+        explored.add(next_node)
+        parents[next_node] = (top_state, move)
+        frontier.push((top_cost + cost, next_node))
+
+  return min_path
 
 def nullHeuristic(state, problem=None):
   """
@@ -109,8 +208,44 @@ def nullHeuristic(state, problem=None):
 def aStarSearch(problem, heuristic=nullHeuristic):
   "Search the node that has the lowest combined cost and heuristic first."
   "*** YOUR CODE HERE ***"
-  util.raiseNotDefined()
-    
+
+  start_state = problem.getStartState()
+
+  priorityFn = lambda cost_node: cost_node[0] + heuristic(cost_node[1], problem=problem)
+
+  frontier = util.PriorityQueueWithFunction(priorityFn)
+  frontier.push((0, start_state))
+
+  # set up expolored to seen state, parents to get back the path
+  explored = set()
+  parents = dict()
+  parents[start_state] = None
+
+  min_cost = float('inf')
+  min_path = None
+
+  while not frontier.isEmpty():
+    top_cost, top_state = frontier.pop()
+    explored.add(top_state)
+
+    # if we at goal, we go backward to the origin
+    if problem.isGoalState(top_state):
+      actions = []
+      curr = top_state
+      while (parents[curr] is not None):
+        curr, move = parents[curr]
+        actions.append(move)
+      return actions[::-1]
+
+    for next_node, move, cost in problem.getSuccessors(top_state):
+      if not next_node in explored:
+        parents[next_node] = (top_state, move)
+        frontier.push((top_cost + cost, next_node))
+
+  return min_path
+
+  return uniformCostSearch(problem, heuristic)
+
   
 # Abbreviations
 bfs = breadthFirstSearch
