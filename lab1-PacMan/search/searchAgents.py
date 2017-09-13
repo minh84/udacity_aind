@@ -491,8 +491,6 @@ def foodHeuristic2(state, problem):
   # we need to eat len(foodPos) - 1 after the first one
   return maxDist
 
-
-
 def foodHeuristic3(state, problem):
   position, foodGrid = state
 
@@ -510,6 +508,17 @@ def foodHeuristic3(state, problem):
         maxAB = max(maxAB, manDist(foodPos[i], foodPos[j]))
 
   return len(search.bfs(problem)) + maxAB
+
+def mstPrim(locations):
+  '''
+  We compute the minimum spanning tree using manhantan distance
+  :param locations: a list of locations
+  :return: a number
+  '''
+  if len(locations) < 2:
+    return 0
+
+  
 
 def foodHeuristic(state, problem):
   """
