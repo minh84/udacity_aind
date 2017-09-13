@@ -452,6 +452,9 @@ class AStarFoodSearchAgent(SearchAgent):
     self.searchFunction = lambda prob: search.aStarSearch(prob, foodHeuristic)
     self.searchType = FoodSearchProblem
 
+def manDist(loc1, loc2):
+  return abs(loc1[0] - loc2[0]) + abs(loc1[1] - loc2[1])
+
 def foodHeuristic1(state, problem):
   position, foodGrid = state
   "*** YOUR CODE HERE ***"
@@ -461,12 +464,16 @@ def foodHeuristic1(state, problem):
 
   minDist = float('inf')
   for food in foodPos:
-    dist = abs(food[0] - position[0]) + abs(food[1] - position[1])
-    if dist < minDist:
-      minDist = dist
+    minDist = min(minDist, manDist(position, food))
+
+  maxAB = 0
+  if len(foodPos) > 1:
+    for i in range(len(foodPos) - 1):
+      for j in range(i + 1, len(foodPos)):
+        maxAB = max(maxAB, manDist(foodPos[i], foodPos[j]))
 
   # we need to eat len(foodPos) - 1 after the first one
-  return minDist + len(foodPos) - 1
+  return minDist + maxAB
 
 def foodHeuristic2(state, problem):
   position, foodGrid = state
@@ -484,6 +491,8 @@ def foodHeuristic2(state, problem):
   # we need to eat len(foodPos) - 1 after the first one
   return maxDist
 
+
+
 def foodHeuristic3(state, problem):
   position, foodGrid = state
 
@@ -494,7 +503,13 @@ def foodHeuristic3(state, problem):
   # walls = gameState.getWalls()  # Walls
   problem = AnyFoodSearchProblem(problem.startingGameState)
   problem.startState = position
-  return len(search.bfs(problem)) + len(foodPos) - 1
+  maxAB = 0
+  if len(foodPos) > 1:
+    for i in range(len(foodPos) - 1):
+      for j in range(i+1, len(foodPos)):
+        maxAB = max(maxAB, manDist(foodPos[i], foodPos[j]))
+
+  return len(search.bfs(problem)) + maxAB
 
 def foodHeuristic(state, problem):
   """
@@ -521,7 +536,7 @@ def foodHeuristic(state, problem):
     problem.heuristicInfo['wallCount'] = problem.walls.count()
   Subsequent calls to this heuristic can access problem.heuristicInfo['wallCount']
   """
-  return foodHeuristic2(state, problem)
+  return foodHeuristic1(state, problem)
 
 
 class ClosestDotSearchAgent(SearchAgent):
