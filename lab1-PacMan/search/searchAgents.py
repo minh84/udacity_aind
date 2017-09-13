@@ -462,6 +462,60 @@ def foodHeuristic1(state, problem):
   if len(foodPos) == 0:
     return 0
 
+  maxDist = float('-inf')
+  for food in foodPos:
+    maxDist = max(maxDist, manDist(position, food))
+
+  # we need to eat len(foodPos) - 1 after the first one
+  return maxDist
+
+def mstPrim(locations):
+  '''
+  We compute the minimum spanning tree using manhantan distance
+  Since we assume all nodes are connected, so we use the most simple data structure to do the computation
+  :param locations: a list of locations
+  :return: a number
+  '''
+  if len(locations) < 2:
+    return 0
+
+  V = len(locations)
+  F = set()
+  F.add(0)
+  C = {}
+  for i in range(1, V):
+    C[i] = manDist(locations[0], locations[i])
+
+  sumEdge = 0
+
+  while (len(F) < V):
+    minEdge = float('inf')
+    minIdx = None
+    for i in range(1, V):
+      if i in F:
+        continue
+      if C[i] < minEdge:
+        minEdge = C[i]
+        minIdx = i
+
+    sumEdge += minEdge
+    F.add(minIdx)
+    minNode = locations[minIdx]
+    for i in range(1, V):
+      if i in F:
+        continue
+
+      C[i] = min(C[i], manDist(minNode, locations[i]))
+
+  return sumEdge
+
+def foodHeuristic2(state, problem):
+  position, foodGrid = state
+  "*** YOUR CODE HERE ***"
+  foodPos = foodGrid.asList()
+  if len(foodPos) == 0:
+    return 0
+
   minDist = float('inf')
   for food in foodPos:
     minDist = min(minDist, manDist(position, food))
@@ -475,23 +529,25 @@ def foodHeuristic1(state, problem):
   # we need to eat len(foodPos) - 1 after the first one
   return minDist + maxAB
 
-def foodHeuristic2(state, problem):
+def foodHeuristic3(state, problem):
   position, foodGrid = state
-  "*** YOUR CODE HERE ***"
+
   foodPos = foodGrid.asList()
   if len(foodPos) == 0:
     return 0
 
-  maxDist = float('-inf')
+  # walls = gameState.getWalls()  # Walls
+  minDist = float('inf')
   for food in foodPos:
-    dist = abs(food[0] - position[0]) + abs(food[1] - position[1])
-    if dist > maxDist:
-      maxDist = dist
+    minDist = min(minDist, manDist(position, food))
 
-  # we need to eat len(foodPos) - 1 after the first one
-  return maxDist
+  return minDist + mstPrim(foodPos)
+  # if len(foodPos) > 1:
+  #   for i in range(len(foodPos) - 1):
+  #     for j in range(i+1, len(foodPos)):
+  #       maxAB = max(maxAB, manDist(foodPos[i], foodPos[j]))
 
-def foodHeuristic3(state, problem):
+def foodHeuristic4(state, problem):
   position, foodGrid = state
 
   foodPos = foodGrid.asList()
@@ -501,24 +557,51 @@ def foodHeuristic3(state, problem):
   # walls = gameState.getWalls()  # Walls
   problem = AnyFoodSearchProblem(problem.startingGameState)
   problem.startState = position
-  maxAB = 0
-  if len(foodPos) > 1:
-    for i in range(len(foodPos) - 1):
-      for j in range(i+1, len(foodPos)):
-        maxAB = max(maxAB, manDist(foodPos[i], foodPos[j]))
+  problem.food = foodGrid
 
-  return len(search.bfs(problem)) + maxAB
+  # nearest food point
+  distToNearestFood = len(search.bfs(problem))
 
-def mstPrim(locations):
+  # minimum spanning tree with manhatan distance
+  mstEdge = mstPrim(foodPos)
+
+  return distToNearestFood + mstEdge
+
+def minMahatanDist(state, problem):
   '''
-  We compute the minimum spanning tree using manhantan distance
-  :param locations: a list of locations
-  :return: a number
+  get minimun mahatan distance heuristic
+  :param state: current position
+  :param problem: AnyFoodSearchProblem
+  :return:
   '''
-  if len(locations) < 2:
+  foodPos = problem.food.asList()
+  if len(foodPos) == 0:
     return 0
 
-  
+  minDist = float('inf')
+  for food in foodPos:
+    minDist = min(minDist, manDist(state, food))
+  return minDist
+
+def foodHeuristic5(state, problem):
+  position, foodGrid = state
+
+  foodPos = foodGrid.asList()
+  if len(foodPos) == 0:
+    return 0
+
+  # walls = gameState.getWalls()  # Walls
+  problem = AnyFoodSearchProblem(problem.startingGameState)
+  problem.startState = position
+  problem.food = foodGrid
+
+  # nearest food point with A* search
+  distToNearestFood = len(search.aStarSearch(problem, minMahatanDist))
+
+  # minimum spanning tree with manhatan distance
+  mstEdge = mstPrim(foodPos)
+
+  return distToNearestFood + mstEdge
 
 def foodHeuristic(state, problem):
   """
@@ -545,7 +628,7 @@ def foodHeuristic(state, problem):
     problem.heuristicInfo['wallCount'] = problem.walls.count()
   Subsequent calls to this heuristic can access problem.heuristicInfo['wallCount']
   """
-  return foodHeuristic1(state, problem)
+  return foodHeuristic3(state, problem)
 
 
 class ClosestDotSearchAgent(SearchAgent):
@@ -609,14 +692,7 @@ class AnyFoodSearchProblem(PositionSearchProblem):
     "*** YOUR CODE HERE ***"
     # util.raiseNotDefined()
     foodPos = self.food.asList()
-    if len(foodPos) == 0:
-      return True
-
-    for food in foodPos:
-      dist = abs(food[0] - state[0]) + abs(food[1] - state[1])
-      if dist == 0:
-        return True
-    return False
+    return (len(foodPos) == 0) or state in foodPos
 
 ##################
 # Mini-contest 1 #
