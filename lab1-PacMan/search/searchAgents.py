@@ -470,6 +470,22 @@ def foodHeuristic1(state, problem):
 
 def foodHeuristic2(state, problem):
   position, foodGrid = state
+  "*** YOUR CODE HERE ***"
+  foodPos = foodGrid.asList()
+  if len(foodPos) == 0:
+    return 0
+
+  maxDist = float('-inf')
+  for food in foodPos:
+    dist = abs(food[0] - position[0]) + abs(food[1] - position[1])
+    if dist > maxDist:
+      maxDist = dist
+
+  # we need to eat len(foodPos) - 1 after the first one
+  return maxDist
+
+def foodHeuristic3(state, problem):
+  position, foodGrid = state
 
   foodPos = foodGrid.asList()
   if len(foodPos) == 0:
