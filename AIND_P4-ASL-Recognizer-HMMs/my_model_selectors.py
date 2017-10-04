@@ -141,7 +141,7 @@ class SelectorDIC(ModelSelector):
 
         return best_model
 
-class SelectorCV(ModelSelector):
+class SelectorCV(SelectorBIC):
     ''' select best model based on average log Likelihood of cross-validation folds
 
     '''
@@ -151,36 +151,41 @@ class SelectorCV(ModelSelector):
         warnings.filterwarnings("error", category=RuntimeWarning)
 
         # TODO implement model selection using CV
-        split_method = KFold(n_splits = min(3, len(self.sequences)))
+        if len(self.sequences) < 5: # fall-back to BIC to select best number of states
+            return super(SelectorCV, self).select()
+        else:
+            split_method = KFold()
 
-        best_score = float('-inf')
-        best_num_states = None
+            best_score = float('-inf')
+            best_num_states = None
 
-        for num_states in range(self.min_n_components, self.max_n_components+1):
-            try:
-                fold_scores = []
-                for cv_train_idx, cv_test_idx in split_method.split(self.sequences):
-                    # modify so that we can call self.base_model (train with fold-in/out)
-                    self.X, self.lengths = combine_sequences(cv_train_idx, self.sequences)
-                    testX, testLengths = combine_sequences(cv_test_idx, self.sequences)
+            for num_states in range(self.min_n_components, self.max_n_components+1):
+                try:
+                    fold_scores = []
+                    for cv_train_idx, cv_test_idx in split_method.split(self.sequences):
+                        # modify so that we can call self.base_model (train with fold-in/out)
+                        self.X, self.lengths = combine_sequences(cv_train_idx, self.sequences)
 
-                    model = self.base_model(num_states)
-                    if model is not None:
-                        fold_scores.append(model.score(testX, testLengths))
-                    else:
-                        raise Exception('Failed to fit on {} with {} states and cv_train_idx={}'.format(self.this_word, num_states,
-                                                                                                        cv_train_idx))
+                        # score on fold-out set
+                        testX, testLengths = combine_sequences(cv_test_idx, self.sequences)
 
-                cv = np.mean(fold_scores)
-                if cv > best_score:
-                    best_score = cv
-                    best_num_states = num_states
-            except:
-                if self.verbose:
-                    print("failure to score CV on {} with {} states".format(self.this_word, num_states))
+                        model = self.base_model(num_states)
+                        if model is not None:
+                            fold_scores.append(model.score(testX, testLengths))
+                        else:
+                            raise Exception('Failed to fit on {} with {} states and cv_train_idx={}'.format(self.this_word, num_states,
+                                                                                                            cv_train_idx))
 
-        # reset self.X, self.lengths
-        self.X, self.lengths = self.hwords[self.this_word]
+                    cv = np.mean(fold_scores)
+                    if cv > best_score:
+                        best_score = cv
+                        best_num_states = num_states
+                except:
+                    if self.verbose:
+                        print("failure to score CV on {} with {} states".format(self.this_word, num_states))
 
-        # compute best-mean-score
-        return self.base_model(best_num_states)
+            # reset self.X, self.lengths
+            self.X, self.lengths = self.hwords[self.this_word]
+
+            # compute best-mean-score
+            return self.base_model(best_num_states)
