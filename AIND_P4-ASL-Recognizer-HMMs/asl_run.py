@@ -22,6 +22,12 @@ def build_asl_db():
     asl.df['polar-lr'] = np.sqrt(asl.df['grnd-lx'] ** 2 + asl.df['grnd-ly'] ** 2)
     asl.df['polar-ltheta'] = np.arctan2(asl.df['grnd-lx'], asl.df['grnd-ly'])
 
+    refs = ['right-x', 'right-y', 'left-x', 'left-y']
+    features_delta = ['delta-rx', 'delta-ry', 'delta-lx', 'delta-ly']
+    for ref, feat in zip(refs, features_delta):
+        asl.df[feat] = asl.df[ref].diff()
+        asl.df[feat].fillna(0., inplace=True)
+
     # compute mean/std
     df_means = asl.df.groupby('speaker').mean()
     df_stds  = asl.df.groupby('speaker').std()
@@ -98,7 +104,7 @@ if __name__=='__main__':
     if args.run_all:
         wer_results = {}
         training_time = {}
-        feats =['ground_norm']
+        feats     = ['ground', 'norm', 'ground_norm', 'polar', 'polar_norm', 'delta']
         selectors = ['CV', 'BIC', 'DIC']
         for feat in feats:
             test_set = asl_db.build_test(feat_dict[feat])
@@ -114,18 +120,27 @@ if __name__=='__main__':
                 wer = compute_errors(guesses, test_set)
 
                 wer_results[(feat, selector)] = wer
-                training_time[(feat, selector)] = ts - te
+                training_time[(feat, selector)] = te - ts
 
-                print('Training with feature {:12s} and Selector {:3s} took {:.2f}s, WER={:.4f}'.format('\'{}\''.format(feat), selector,
+                print('Training with feature {:13s} and Selector {:3s} took {:.2f}s, WER={:.4f}'.format('\'{}\''.format(feat), selector,
                                                                                                          te - ts, wer))
 
-        print('Summary\n---------------------------------------\n\n')
+        print('\nWER Summary\n---------------------------------------\n\n')
         print('|             | {} |'.format(' | '.join(['{:6s}'.format(s) for s in selectors])))
         print('|------------:|{}|'.format('|'.join([':------:'] * len(selector_dict))))
         for feat in feats:
             row = [' {:11s} '.format(feat)]
             for selector in selectors :
                 row.append(' {:.4f} '.format(wer_results[(feat, selector)]))
+            print('|{}|'.format('|'.join(row)))
+
+        print('\nTraining Time Summary\n---------------------------------------\n\n')
+        print('|             | {} |'.format(' | '.join(['{:6s}'.format(s) for s in selectors])))
+        print('|------------:|{}|'.format('|'.join([':------:'] * len(selector_dict))))
+        for feat in feats:
+            row = [' {:11s} '.format(feat)]
+            for selector in selectors:
+                row.append(' {:6.2f} '.format(training_time[(feat, selector)]))
             print('|{}|'.format('|'.join(row)))
     else:
         ts = time.time()
