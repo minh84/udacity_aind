@@ -6,7 +6,7 @@ import numpy as np
 from hmmlearn.hmm import GaussianHMM
 from sklearn.model_selection import KFold
 from asl_utils import combine_sequences
-
+from collections import defaultdict
 
 class ModelSelector(object):
     '''
@@ -77,8 +77,28 @@ class SelectorBIC(ModelSelector):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         # TODO implement model selection based on BIC scores
-        raise NotImplementedError
+        N = len(self.lengths)
+        best_score = float('inf')
+        best_model = None
+        for num_states in range(self.min_n_components, self.max_n_components+1):
+            model = self.base_model(num_states)
+            if model is not None:
+                try:
+                    logL = model.score(self.X, self.lengths)
+                    # there are
+                    #       num_state - 1 free-parameters in initial probability
+                    #       num_state(num_state - 1) free-parameter in transition-matrix
+                    #       2 * num_state * n_features (since we use Gaussian HMM with covariance_type = 'diag'
+                    p    = num_states**2 - 1 + 2 * num_states * model.n_features
+                    bic  = -2*logL + p * np.log(N)
+                    if bic < best_score:
+                        best_score = bic
+                        best_model = model
+                except:
+                    if self.verbose:
+                        print('failure to score-BIC on {} with {} states'.format(self.this_word, num_states))
 
+        return best_model
 
 class SelectorDIC(ModelSelector):
     ''' select best model based on Discriminative Information Criterion
@@ -94,8 +114,32 @@ class SelectorDIC(ModelSelector):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         # TODO implement model selection based on DIC scores
-        raise NotImplementedError
+        M = len(self.words)
+        best_score = float('-inf')
+        best_model = None
+        for num_states in range(self.min_n_components, self.max_n_components+1):
+            model = self.base_model(num_states)
+            if model is not None:
+                try:
+                    logL = model.score(self.X, self.lengths)
+                    logOther = 0.
+                    for w in self.words:
+                        if w == self.this_word:
+                            continue
 
+                        otherX, otherlengths = self.hwords[w]
+                        logOther += model.score(otherX, otherlengths)
+
+                    dic = logL - logOther / (M-1)
+
+                    if dic > best_score:
+                        best_score = dic
+                        best_model = model
+                except:
+                    if self.verbose:
+                        print('failure to score-DIC on {} with {} states'.format(self.this_word, num_states))
+
+        return best_model
 
 class SelectorCV(ModelSelector):
     ''' select best model based on average log Likelihood of cross-validation folds
@@ -104,6 +148,39 @@ class SelectorCV(ModelSelector):
 
     def select(self):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
+        warnings.filterwarnings("error", category=RuntimeWarning)
 
         # TODO implement model selection using CV
-        raise NotImplementedError
+        split_method = KFold(n_splits = min(3, len(self.sequences)))
+
+        best_score = float('-inf')
+        best_num_states = None
+
+        for num_states in range(self.min_n_components, self.max_n_components+1):
+            try:
+                fold_scores = []
+                for cv_train_idx, cv_test_idx in split_method.split(self.sequences):
+                    # modify so that we can call self.base_model (train with fold-in/out)
+                    self.X, self.lengths = combine_sequences(cv_train_idx, self.sequences)
+                    testX, testLengths = combine_sequences(cv_test_idx, self.sequences)
+
+                    model = self.base_model(num_states)
+                    if model is not None:
+                        fold_scores.append(model.score(testX, testLengths))
+                    else:
+                        raise Exception('Failed to fit on {} with {} states and cv_train_idx={}'.format(self.this_word, num_states,
+                                                                                                        cv_train_idx))
+
+                cv = np.mean(fold_scores)
+                if cv > best_score:
+                    best_score = cv
+                    best_num_states = num_states
+            except:
+                if self.verbose:
+                    print("failure to score CV on {} with {} states".format(self.this_word, num_states))
+
+        # reset self.X, self.lengths
+        self.X, self.lengths = self.hwords[self.this_word]
+
+        # compute best-mean-score
+        return self.base_model(best_num_states)
