@@ -122,13 +122,7 @@ class SelectorDIC(ModelSelector):
             if model is not None:
                 try:
                     logL = model.score(self.X, self.lengths)
-                    logOther = 0.
-                    for w in self.words:
-                        if w == self.this_word:
-                            continue
-
-                        otherX, otherlengths = self.hwords[w]
-                        logOther += model.score(otherX, otherlengths)
+                    logOther = np.mean( [ model.score(*self.hwords[word]) for word in self.words if word != self.this_word ] )
 
                     dic = logL - logOther / (M-1)
 
@@ -173,7 +167,8 @@ class SelectorCV(SelectorBIC):
                         if model is not None:
                             fold_scores.append(model.score(testX, testLengths))
                         else:
-                            raise Exception('Failed to fit on {} with {} states and cv_train_idx={}'.format(self.this_word, num_states,
+                            raise Exception('Failed to fit on {} with {} states and cv_train_idx={}'.format(self.this_word,
+                                                                                                            num_states,
                                                                                                             cv_train_idx))
 
                     cv = np.mean(fold_scores)
